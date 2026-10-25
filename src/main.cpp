@@ -1,56 +1,54 @@
 #include <iostream>
 #include <core/wallet.hpp>
-#include <core/transaction.hpp> // Мы создадим его чуть позже, но пока закомментируй
+#include <core/transaction.hpp>
+#include <core/mempool.hpp>
 
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
 #define CYAN    "\033[36m"
+#define YELLOW  "\033[33m"
 
 int main() {
-    std::cout << CYAN << "=== Testing Cryptography ===\n" << RESET;
+    std::cout << CYAN << "=== cryptoC Wallet & Mempool Test ===\n" << RESET;
     
-    // 1. Создаем кошельки Алисы и Боба
     core::Wallet alice;
     core::Wallet bob;
-
-    std::cout << "Alice Address: " << alice.public_key_hex.substr(0, 16) << "...\n";
-    std::cout << "Bob Address:   " << bob.public_key_hex.substr(0, 16) << "...\n\n";
-
-    // 2. Алиса хочет отправить 10 монет. Формируем данные и хеш.
-    std::string message = "Alice sends 10 coins to Bob";
-    std::string message_hash = crypto::sha256_hex(message); 
     
-    std::cout << "Message: " << message << "\n";
-    std::cout << "Hash:    " << message_hash.substr(0, 16) << "...\n\n";
+    std::cout << "Alice Addr: " << alice.public_key_hex.substr(0, 16) << "...\n";
+    std::cout << "Bob Addr:   " << bob.public_key_hex.substr(0, 16) << "...\n\n";
 
-    // 3. Алиса подписывает хеш своим приватным ключом
-    std::string signature = alice.sign(message_hash);
-    std::cout << "Signature: " << signature.substr(0, 16) << "...\n\n";
+    core::Transaction tx;
+    tx.sender = alice.public_key_hex;
+    tx.receiver = bob.public_key_hex;
+    tx.amount = 10;
+    tx.nonce = 1;
 
-    // 4. Сеть (мы) проверяет подпись публичным ключом Алисы
-    bool is_valid = core::verify_signature(alice.public_key_hex, message_hash, signature);
-    
+    std::string tx_hash = tx.get_hash();
+    tx.signature = alice.sign(tx_hash);
+
+    std::cout << "Created: " << tx.to_string() << "\n\n";
+
+    bool is_valid = core::verify_signature(tx.sender, tx_hash, tx.signature);
     if (is_valid) {
-        std::cout << GREEN << "[OK] Signature is VALID. Alice authorized this.\n" << RESET;
+        std::cout << GREEN << "[OK] Signature is valid. Transaction accepted.\n" << RESET;
     } else {
-        std::cout << RED << "[ERROR] Signature is INVALID.\n" << RESET;
+        std::cout << RED << "[ERROR] Signature invalid. Transaction rejected.\n" << RESET;
+        return 1;
     }
 
-    // 5. СИМУЛЯЦИЯ ВЗЛОМА: Хакер меняет сообщение!
-    std::cout << "\n--- Hacker changes the message ---\n";
-    std::string hacked_message = "Alice sends 1000 coins to Bob";
-    std::string hacked_hash = crypto::sha256_hex(hacked_message);
+    core::Mempool mempool;
+    mempool.add_transaction(tx);
+    std::cout << YELLOW << "\nMempool size: " << mempool.size() << " transaction(s)\n" << RESET;
+    std::cout << RED << "\n--- Hacker tampers with the transaction ---\n" << RESET;
+    tx.amount = 999999;
+    std::string hacked_hash = tx.get_hash();
     
-    std::cout << "Hacked Hash: " << hacked_hash.substr(0, 16) << "...\n";
-    
-    // Пытаемся проверить СТАРУЮ подпись с НОВЫМ хешем
-    bool is_hacked_valid = core::verify_signature(alice.public_key_hex, hacked_hash, signature);
-    
+    bool is_hacked_valid = core::verify_signature(tx.sender, hacked_hash, tx.signature);
     if (is_hacked_valid) {
-        std::cout << GREEN << "[OK] Signature is VALID (This should NOT happen!)\n" << RESET;
+        std::cout << GREEN << "[OK] Hack passed (This should NOT happen!)\n" << RESET;
     } else {
-        std::cout << RED << "[ERROR] Signature is INVALID. The hack failed!\n" << RESET;
+        std::cout << RED << "[ERROR] Hack failed. Signature does not match new data.\n" << RESET;
     }
 
     return 0;

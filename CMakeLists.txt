@@ -14,6 +14,8 @@ add_executable(cryptoC
 	src/crypto/hash.cpp
 	src/core/block.cpp
 	src/core/chain.cpp 
+	src/core/wallet.cpp
+	src/core/mempool.cpp
 )
 target_include_directories(cryptoC PRIVATE include ${SODIUM_INCLUDE_DIRS})
 target_link_libraries(cryptoC PRIVATE ${SODIUM_LIBRARIES})

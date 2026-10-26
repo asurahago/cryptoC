@@ -15,6 +15,13 @@ class Mempool {
 
         bool add_transaction(const Transaction& tx);
         std::vector<Transaction> get_transactions(size_t max_count = 100);
+
+        std::vector<Transaction> peek() const {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return transactions_;
+        }
+
+
         size_t size() const;
         void clear();
 };

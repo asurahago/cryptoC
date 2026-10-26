@@ -4,11 +4,20 @@
 
 namespace core {
 
+
+std::string Block::compute_merkle_root() const {
+    if (transactions.empty()) return crypto::sha256_hex("empty");
+    std::string concat;
+    concat.reserve(transactions.size() * 64);
+    for (const auto& tx : transactions) concat += tx.get_hash();
+    return crypto::sha256_hex(concat);
+}
+
 std::string Block::compute_hash() const{
     std::ostringstream oss;
     oss << index << '|'
         << timestamp << '|'
-        << data << '|'
+        << merkle_root << '|'
         << prev_hash << '|'
         << nonce;
     return crypto::sha256_hex(oss.str());
@@ -16,6 +25,7 @@ std::string Block::compute_hash() const{
 
 
 void Block::mine(uint32_t difficulty){
+    merkle_root = compute_merkle_root();
     nonce = 0;
     while(true){
         hash = compute_hash();
@@ -32,9 +42,11 @@ std::string Block::to_string() const{
     oss << "Block #" << index
         << "    ts=" << timestamp
         << "    nonce=" << nonce << '\n'
-        << "    data=" << data << '\n'
+        << "    merkle=" << merkle_root.substr(0, 16) << '\n'
         << "    prev=" << prev_hash.substr(0, 16) << "...\n"
-        << "    hash=" << hash.substr(0, 16) << "...";
+        << "    hash=" << hash.substr(0, 16) << "..."
+        << "    txs=" << transactions.size();
+    for (const auto& tx : transactions) oss << "\n  " << tx.to_string();
     return oss.str();
 }
 
